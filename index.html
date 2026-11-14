@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>SFS - エコ活動記録</title>
+  <style>
+    :root {
+      --bg-main: #F7F9F7;
+      --surface: #FFFFFF;
+      --text-main: #2D3732;
+      --text-sub: #6E7D75;
+
+      /* すべてグリーンに統一 */
+      --green-main: #689F77;
+      --green-dark: #4E805C;
+      --green-soft: #E9F4EC;
+      --green-border: #C5DFCC;
+
+      --border-light: #E2E8E4;
+      --praise-gray: #9BA39E;
+
+      --shadow-sm: 0 2px 8px rgba(45, 55, 50, 0.04);
+      --shadow-md: 0 8px 24px rgba(45, 55, 50, 0.08);
+      --radius-lg: 18px;
+      --radius-md: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 480px;
+      min-height: 100vh;
+      background: var(--bg-main);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      padding-bottom: 84px;
+    }
+
+    /* ヘッダー */
+    header {
+      padding: 20px 20px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      background: rgba(247, 249, 247, 0.9);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .date-badge {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--green-dark);
+      background: var(--green-soft);
+      padding: 4px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--green-border);
+    }
+
+    /* メインコンテンツ */
+    main {
+      flex: 1;
+      padding: 8px 16px 24px;
+      position: relative;
+    }
+
+    .tab-page {
+      display: none;
+      animation: fadeIn 0.22s ease;
+    }
+
+    .tab-page.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 通知トースト（緑の角丸） */
+    .toast {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: var(--green-main);
+      color: #FFFFFF;
+      padding: 10px 22px;
+      border-radius: 999px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      box-shadow: 0 8px 20px rgba(104, 159, 119, 0.32);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* 選択グリッド */
+    .eco-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .eco-card {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.14s ease, background-color 0.2s ease, border-color 0.2s ease;
+      position: relative;
+      user-select: none;
+    }
+
+    .eco-card:active {
+      transform: scale(0.96);
+    }
+
+    /* 1回以上選択されたら緑色に変化（常に動的） */
+    .eco-card.active-item {
+      background: var(--green-soft);
+      border-color: var(--green-border);
+    }
+    .eco-card.active-item .icon-wrap {
+      color: var(--green-dark);
+      background: #FFFFFF;
+    }
+    .eco-card.active-item .count-pill {
+      background: var(--green-main);
+      color: #FFFFFF;
+    }
+
+    .icon-wrap {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: var(--bg-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-main);
+      transition: background-color 0.2s;
+    }
+
+    .eco-title {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--text-main);
+      text-align: center;
+    }
+
+    .count-pill {
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 3px 11px;
+      border-radius: 999px;
+      background: #EDF1EE;
+      color: var(--text-sub);
+      transition: all 0.2s;
+    }
+
+    /* 追加ボタン */
+    .add-card {
+      background: transparent;
+      border: 1.5px dashed #C4D0C8;
+      box-shadow: none;
+      color: var(--text-sub);
+    }
+    .add-card:hover {
+      background: rgba(255, 255, 255, 0.6);
+    }
+
+    /* グラフ画面 */
+    .card-box {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin: 0 0 14px;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .bar-row:last-child { margin-bottom: 0; }
+
+    .bar-label {
+      width: 112px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-main);
+      flex-shrink: 0;
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 10px;
+      background: #EEF2EF;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--green-main);
+      transition: width 0.4s ease;
+    }
+
+    .bar-val {
+      width: 38px;
+      text-align: right;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-sub);
+    }
+
+    /* カレンダー画面 */
+    .cal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      text-align: center;
+    }
+    .cal-dow {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-sub);
+      padding-bottom: 4px;
+    }
+    .cal-day {
+      aspect-ratio: 1;
+      border-radius: 12px;
+      border: 1px solid var(--border-light);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.82rem;
+      font-weight: 600;
+      background: var(--surface);
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .cal-day:active {
+      transform: scale(0.94);
+    }
+    .cal-day.today {
+      border: 1.5px solid var(--green-main);
+    }
+    .cal-day.active-day {
+      background: var(--green-soft);
+      border-color: var(--green-border);
+      color: var(--green-dark);
+    }
+    .cal-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--green-main);
+      margin-top: 2px;
+    }
+
+    /* 状態画面 */
+    .status-wrapper {
+      position: relative;
+      overflow: hidden;
+      min-height: 420px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .praise-bg {
+      position: absolute;
+      right: -8px;
+      bottom: 8px;
+      width: 210px;
+      height: 210px;
+      color: var(--praise-gray);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .status-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .total-badge {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 6px;
+      margin: 8px 0 4px;
+    }
+    .total-num {
+      font-size: 2.6rem;
+      font-weight: 800;
+      color: var(--green-dark);
+      line-height: 1;
+    }
+    .rank-tag {
+      display: inline-block;
+      background: var(--green-soft);
+      color: var(--green-dark);
+      border: 1px solid var(--green-border);
+      font-size: 0.82rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 999px;
+      margin-top: 6px;
+    }
+
+    /* モーダル各種 */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(35, 43, 39, 0.35);
+      backdrop-filter: blur(3px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 20px;
+    }
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-card {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: 24px;
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 340px;
+      text-align: center;
+      box-shadow: var(--shadow-md);
+      animation: popIn 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.92); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .modal-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--green-soft);
+      color: var(--green-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 14px;
+    }
+
+    .modal-card h2 {
+      margin: 0 0 8px;
+      font-size: 1.25rem;
+      color: var(--text-main);
+    }
+    .modal-card p {
+      margin: 0 0 18px;
+      font-size: 0.9rem;
+      color: var(--text-sub);
+      line-height: 1.5;
+    }
+
+    .btn-primary {
+      background: var(--green-main);
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 11px 24px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid var(--border-light);
+      border-radius: 12px;
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+      outline: none;
+    }
+    .input-field:focus {
+      border-color: var(--green-main);
+    }
+
+    /* 写真追加エリア */
+    .photo-dropzone {
+      border: 1.5px dashed var(--green-border);
+      background: var(--green-soft);
+      border-radius: 14px;
+      padding: 18px;
+      margin: 12px 0 16px;
+      color: var(--green-dark);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ボトムナビゲーション */
+    nav.bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 480px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid var(--border-light);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+      z-index: 50;
+    }
+
+    .nav-btn {
+      background: none;
+      border: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-sub);
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 0;
+      transition: color 0.2s;
+    }
+
+    .nav-btn.active {
+      color: var(--green-dark);
+    }
+
+    .nav-btn.active .nav-icon-box {
+      background: var(--green-soft);
+      color: var(--green-dark);
+    }
+
+    .nav-icon-box {
+      padding: 4px 14px;
+      border-radius: 999px;
+      transition: background-color 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- 緑の角丸通知 -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <header>
+      <h1>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#689F77" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+          <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+        </svg>
+        SFS エコ活動記録
+      </h1>
+      <span id="currentDateBadge" class="date-badge">11月14日</span>
+    </header>
+
+    <main>
+      <!-- 1. 選択タブ -->
+      <section id="page-select" class="tab-page active">
+        <div id="ecoGrid" class="eco-grid"></div>
+      </section>
+
+      <!-- 2. グラフタブ -->
+      <section id="page-graph" class="tab-page">
+        <div class="card-box">
+          <h2 class="section-title">項目別の記録回数</h2>
+          <div id="graphContainer"></div>
+        </div>
+      </section>
+
+      <!-- 3. カレンダータブ -->
+      <section id="page-calendar" class="tab-page">
+        <div class="card-box">
+          <div class="cal-header">
+            <h2 class="section-title" style="margin:0;">11月の活動ログ</h2>
+            <span style="font-size:0.78rem; color:var(--text-sub);">日付をタップして詳細確認</span>
+          </div>
+          <div class="cal-grid" id="calendarGrid"></div>
+        </div>
+      </section>
+
+      <!-- 4. 状態タブ -->
+      <section id="page-status" class="tab-page">
+        <div class="card-box status-wrapper">
+          <div class="status-content">
+            <h2 class="section-title">現在のエコステータス</h2>
+            <div class="total-badge">
+              <span class="total-num" id="totalCountDisplay">0</span>
+              <span style="font-size:1rem; font-weight:700; color:var(--text-sub);">回 達成</span>
+            </div>
+            <div>
+              <span class="rank-tag" id="rankTitle">芽吹きサポーター</span>
+            </div>
+            <p id="statusMessage" style="margin-top:16px; font-size:0.9rem; color:var(--text-main); line-height:1.6; max-width:240px;">
+              日々の小さな選択が、未来の地球をやさしく育てています。
+            </p>
+          </div>
+
+          <!-- 背景の賞賛する人（明確なグレー） -->
+          <svg class="praise-bg" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="115" cy="54" r="20" />
+            <path d="M108 51c1.5-2 3.5-2 5 0" />
+            <path d="M119 51c1.5-2 3.5-2 5 0" />
+            <path d="M110 60c3 3.5 8 3.5 11 0" />
+            <path d="M74 168c2-34 16-58 41-58s39 24 41 58" />
+            <path d="M84 122c-16-14-24-32-18-50" />
+            <path d="M146 122c16-14 24-32 18-50" />
+            <path d="M54 56l-10-6" />
+            <path d="M52 70l-12 2" />
+            <path d="M174 56l10-6" />
+            <path d="M176 70l12 2" />
+            <path d="M115 22v-10" />
+          </svg>
+        </div>
+      </section>
+    </main>
+
+    <!-- カレンダー日付タップ時の詳細＆写真追加モーダル -->
+    <div id="dayDetailModal" class="modal-overlay" onclick="closeDayModal()">
+      <div class="modal-card" onclick="event.stopPropagation()" style="text-align: left;">
+        <h2 id="modalDateTitle" style="font-size:1.1rem; border-bottom:1px solid var(--border-light); padding-bottom:8px; margin-bottom:12px;">2026-11-14 の活動記録</h2>
+        <div id="modalDayContent" style="font-size:0.9rem; color:var(--text-main); margin-bottom:14px; line-height:1.6;">
+          - 自転車（1回目）
+        </div>
+        <div class="photo-dropzone" onclick="alert('写真フォルダを開きます（デモ）')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span>📸 写真を追加</span>
+        </div>
+        <button class="btn-primary" onclick="closeDayModal()">閉じる</button>
+      </div>
+    </div>
+
+    <!-- 節目（50回など）のお祝いモーダル -->
+    <div id="milestoneModal" class="modal-overlay" onclick="closeMilestoneModal()">
+      <div class="modal-card" onclick="event.stopPropagation()">
+        <div class="modal-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v8" />
+            <path d="M8 6c0-2.2 1.8-4 4-4s4 1.8 4 4" />
+            <path d="M12 10c-4.5 0-8 3.5-8 8h16c0-4.5-3.5-8-8-8Z" />
+            <path d="M7 21h10" />
+          </svg>
+        </div>
+        <h2 id="milestoneTitle">50回おめでとう！</h2>
+        <p>これからも自分のペースで楽しく続けていきましょう。</p>
+        <button class="btn-primary" onclick="closeMilestoneModal()">とじる</button>
+      </div>
+    </div>
+
+    <!-- 新しい項目を追加するモーダル -->
+    <div id="addModal" class="modal-overlay" onclick="closeAddModal()">
+      <div class="modal-card" onclick="event.stopPropagation()">
+        <h2 style="font-size:1.15rem; margin-bottom:14px;">新しいエコ項目を追加</h2>
+        <input id="newItemName" class="input-field" type="text" placeholder="例：マイタンブラー、節電" maxlength="12" />
+        <div style="display:flex; gap:8px;">
+          <button class="btn-primary" style="background:#EDF1EE; color:var(--text-sub);" onclick="closeAddModal()">キャンセル</button>
+          <button class="btn-primary" onclick="addNewEcoItem()">追加する</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ボトムナビ -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-tab="select" onclick="switchTab('select', this)">
+        <span class="nav-icon-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 20h10" />
+            <path d="M10 20c5.5-2.5.8-6.4 3-10" />
+            <path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z" />
+            <path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z" />
+          </svg>
+        </span>
+        選択
+      </button>
+      <button class="nav-btn" data-tab="graph" onclick="switchTab('graph', this)">
+        <span class="nav-icon-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10" />
+            <line x1="12" y1="20" x2="12" y2="4" />
+            <line x1="6" y1="20" x2="6" y2="14" />
+          </svg>
+        </span>
+        グラフ
+      </button>
+      <button class="nav-btn" data-tab="calendar" onclick="switchTab('calendar', this)">
+        <span class="nav-icon-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="3" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+        </span>
+        カレンダー
+      </button>
+      <button class="nav-btn" data-tab="status" onclick="switchTab('status', this)">
+        <span class="nav-icon-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="5" />
+            <path d="M8.5 12.5 7 21l5-3 5 3-1.5-8.5" />
+          </svg>
+        </span>
+        状態
+      </button>
+    </nav>
+  </div>
+
+  <script>
+    // 線数の少ないミニマルなオリジナルSVGアイコン集（stroke-width: 1.6）
+    const ICONS = {
+      bottle: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 3v3l-2 2.5V19a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V8.5L14 6V3"/><path d="M8 12h8"/></svg>`,
+      bag: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>`,
+      chopsticks: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="19" x2="18" y2="4"/><line x1="9" y1="20" x2="20" y2="7"/></svg>`,
+      flea: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h16v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9Z"/><path d="M3 10l2-5h14l2 5"/><path d="M12 5v5"/></svg>`,
+      handover: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7c-1.5-2-4.5-2-5.5 0-1 2 1 4.5 5.5 7.5 4.5-3 6.5-5.5 5.5-7.5-1-2-4-2-5.5 0Z"/><path d="M4 18h16"/></svg>`,
+      water: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5C12 3.5 6.5 9.8 6.5 14a5.5 5.5 0 0 0 11 0c0-4.2-5.5-10.5-5.5-10.5Z"/></svg>`,
+      recycle: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 19H4.8a1.8 1.8 0 0 1-1.6-2.7l3-5.3"/><path d="m4.5 11.5 2-.5.8 1.9"/><path d="M17 19h2.2a1.8 1.8 0 0 0 1.6-2.7l-3-5.3"/><path d="M9.5 6.5 11 4.2a1.8 1.8 0 0 1 3 0l1.5 2.3"/><path d="M10 19h4"/></svg>`,
+      cleanplate: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M9.5 12.2 11.2 14l3.5-3.8"/></svg>`,
+      walk: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="5" r="2"/><path d="m10 20 2-6 3 2v4"/><path d="m9 11 3-2 3 2"/></svg>`,
+      bike: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="16.5" r="3.5"/><circle cx="17.5" cy="16.5" r="3.5"/><path d="M6.5 16.5 10 10h4l3.5 6.5"/><path d="M13 7h2.5"/></svg>`,
+      leaf: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/></svg>`
+    };
+
+    const DEFAULT_ITEMS = [
+      { id: 'bottle', name: 'マイボトル', icon: 'bottle', count: 0 },
+      { id: 'bag', name: 'マイバッグ', icon: 'bag', count: 0 },
+      { id: 'chopsticks', name: 'マイ箸', icon: 'chopsticks', count: 0 },
+      { id: 'flea', name: 'フリーマーケット', icon: 'flea', count: 0 },
+      { id: 'handover', name: '譲りもの', icon: 'handover', count: 0 },
+      { id: 'water', name: '水まき', icon: 'water', count: 0 },
+      { id: 'recycle', name: 'リサイクル', icon: 'recycle', count: 0 },
+      { id: 'cleanplate', name: '完食', icon: 'cleanplate', count: 0 },
+      { id: 'walk', name: '徒歩', icon: '徒歩', count: 0 },
+      { id: 'bike', name: '自転車', icon: 'bike', count: 1 }
+    ];
+
+    let ecoItems = JSON.parse(localStorage.getItem('sfs_eco_items_v3')) || DEFAULT_ITEMS;
+    let activeDays = JSON.parse(localStorage.getItem('sfs_active_days_v3')) || [14];
+    let toastTimer = null;
+
+    function saveState() {
+      localStorage.setItem('sfs_eco_items_v3', JSON.stringify(ecoItems));
+      localStorage.setItem('sfs_active_days_v3', JSON.stringify(activeDays));
+    }
+
+    function getTotalCount() {
+      return ecoItems.reduce((sum, item) => sum + item.count, 0);
+    }
+
+    // 緑の角丸通知を表示
+    function showToast(text) {
+      const toast = document.getElementById('toast');
+      toast.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        <span>${text}</span>
+      `;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2200);
+    }
+
+    function recordEco(id) {
+      const item = ecoItems.find(i => i.id === id);
+      if (!item) return;
+
+      item.count += 1;
+      const total = getTotalCount();
+
+      if (!activeDays.includes(14)) {
+        activeDays.push(14);
+      }
+
+      saveState();
+      renderAll();
+
+      showToast(`${item.name} ${item.count}回目！`);
+
+      if (total > 0 && (total === 10 || total === 30 || total % 50 === 0)) {
+        document.getElementById('milestoneTitle').textContent = `${total}回おめでとう！`;
+        document.getElementById('milestoneModal').classList.add('open');
+      }
+    }
+
+    function renderSelectGrid() {
+      const grid = document.getElementById('ecoGrid');
+      grid.innerHTML = ecoItems.map(item => {
+        // カウントが1以上なら動的に緑に変化
+        const activeClass = item.count > 0 ? 'active-item' : '';
+        return `
+          <div class="eco-card ${activeClass}" onclick="recordEco('${item.id}')">
+            <div class="icon-wrap">${ICONS[item.icon] || ICONS.leaf}</div>
+            <div class="eco-title">${item.name}</div>
+            <div class="count-pill">${item.count}回</div>
+          </div>
+        `;
+      }).join('') + `
+        <div class="eco-card add-card" onclick="openAddModal()">
+          <div class="icon-wrap" style="background:transparent;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </div>
+          <div class="eco-title" style="color:var(--text-sub);">新しい項目</div>
+          <div class="count-pill" style="background:transparent;">＋ 追加</div>
+        </div>
+      `;
+    }
+
+    function renderGraph() {
+      const container = document.getElementById('graphContainer');
+      const maxVal = Math.max(...ecoItems.map(i => i.count), 5);
+      container.innerHTML = ecoItems.map(item => {
+        const pct = Math.round((item.count / maxVal) * 100);
+        return `
+          <div class="bar-row">
+            <div class="bar-label">
+              <span style="color:var(--text-sub); display:flex;">${ICONS[item.icon] || ICONS.leaf}</span>
+              <span>${item.name}</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${pct}%"></div>
+            </div>
+            <div class="bar-val">${item.count}回</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderCalendar() {
+      const grid = document.getElementById('calendarGrid');
+      const dows = ['日', '月', '火', '水', '木', '金', '土'];
+      let html = dows.map(d => `<div class="cal-dow">${d}</div>`).join('');
+
+      for (let day = 1; day <= 30; day++) {
+        const isActive = activeDays.includes(day);
+        const isToday = day === 14;
+        html += `
+          <div class="cal-day ${isActive ? 'active-day' : ''} ${isToday ? 'today' : ''}" onclick="openDayDetail(${day})">
+            <span>${day}</span>
+            ${isActive ? '<span class="cal-dot"></span>' : ''}
+          </div>
+        `;
+      }
+      grid.innerHTML = html;
+    }
+
+    function renderStatus() {
+      const total = getTotalCount();
+      document.getElementById('totalCountDisplay').textContent = total;
+
+      let rank = '芽吹きサポーター';
+      let msg = '日々の小さな選択が、未来の地球をやさしく育てています。';
+      if (total >= 50) {
+        rank = 'エコマスター';
+        msg = '素晴らしい継続力です！あなたの行動がまわりの良いお手本になっています。';
+      } else if (total >= 20) {
+        rank = 'グリーンリーダー';
+        msg = 'エコな習慣がすっかり身についてきましたね。この調子で楽しみましょう！';
+      } else if (total >= 5) {
+        rank = '若葉チャレンジャー';
+        msg = 'いいペースで記録が増えています！無理なく心地よいエコを続けましょう。';
+      }
+      document.getElementById('rankTitle').textContent = rank;
+      document.getElementById('statusMessage').textContent = msg;
+    }
+
+    function renderAll() {
+      renderSelectGrid();
+      renderGraph();
+      renderCalendar();
+      renderStatus();
+    }
+
+    function switchTab(tabName, btn) {
+      document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+      document.getElementById(`page-${tabName}`).classList.add('active');
+
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+
+    // 日付詳細モーダル（写真追加機能つき）
+    function openDayDetail(day) {
+      document.getElementById('modalDateTitle').textContent = `2026-11-${String(day).padStart(2, '0')} の活動記録`;
+      
+      const hasRecord = activeDays.includes(day);
+      let contentHtml = hasRecord ? '- 自転車（1回目）' : 'この日の記録はありません';
+      document.getElementById('modalDayContent').innerHTML = contentHtml;
+
+      document.getElementById('dayDetailModal').classList.add('open');
+    }
+
+    function closeDayModal() {
+      document.getElementById('dayDetailModal').classList.remove('open');
+    }
+
+    function closeMilestoneModal() {
+      document.getElementById('milestoneModal').classList.remove('open');
+    }
+
+    function openAddModal() {
+      document.getElementById('newItemName').value = '';
+      document.getElementById('addModal').classList.add('open');
+      setTimeout(() => document.getElementById('newItemName').focus(), 100);
+    }
+
+    function closeAddModal() {
+      document.getElementById('addModal').classList.remove('open');
+    }
+
+    function addNewEcoItem() {
+      const input = document.getElementById('newItemName');
+      const name = input.value.trim();
+      if (!name) return;
+
+      ecoItems.push({
+        id: 'custom_' + Date.now(),
+        name,
+        icon: 'leaf',
+        count: 0
+      });
+      saveState();
+      renderAll();
+      closeAddModal();
+      showToast(`「${name}」を追加しました`);
+    }
+
+    // 初期描画
+    renderAll();
+  </script>
+</body>
+</html>
